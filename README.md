@@ -1,7 +1,7 @@
 # 🔖 ALUNOS
 
 - [Andrei Rech | 23102140](https://github.com/AndreiRech) 
-- [Erik Suris | ](https://github.com/)
+- [Erik Suris | 23102289](https://github.com/erikvsuris)
 
 # 📚 INTRODUÇÃO
 
