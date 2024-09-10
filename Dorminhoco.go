@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-const NJ = 5
-const M = 4 
+const NJ = 5           // numero de jogadores
+const M = 4            // numero de cartas
 
 type carta string
 
@@ -49,36 +49,34 @@ func bateu(mao []carta) bool {
 	return false
 }
 
-func jogador(id int, in chan carta, out chan carta, cartasIniciais []carta, acabou, batida chan int) {
+func jogador(id int, in chan carta, out chan carta, cartasIniciais []carta, batida chan int, termino chan int) {
 	mao := cartasIniciais
 	batido := false
 
 	for {
 		if batido {
+			// Jogador que já bateu apenas repassa a carta
 			cartaRecebida := <-in
-			//fmt.Printf("Jogador batido %d recebeu a carta: %s\n", id, cartaRecebida)
 			out <- cartaRecebida
 		} else {
 			select {
-			case <-batida:
-				batida <- id
-				acabou <- id
-				batido = true
-				fmt.Printf("Jogador %d bateu e saiu do jogo\n", id)
-			default:
-				cartaRecebida := <-in
-				//fmt.Printf("Jogador %d recebeu a carta: %s\n", id, cartaRecebida)
-				mao = append(mao, cartaRecebida)
-				if bateu(mao) {
+				case <-batida:
 					batida <- id
-					acabou <- id
 					batido = true
-					fmt.Printf("Jogador %d bateu e saiu do jogo\n", id)
-				}
-				cartaParaSair := escolherCarta(mao)
-				//fmt.Printf("Jogador %d enviou a carta: %s\n", id, mao[cartaParaSair])
-				out <- mao[cartaParaSair]
-				mao = append(mao[:cartaParaSair], mao[cartaParaSair+1:]...)
+					termino <- id
+					// fmt.Printf("Jogador %d bateu e saiu do jogo\n", id)
+				default:
+					cartaRecebida := <-in
+					mao = append(mao, cartaRecebida)
+					if bateu(mao) {
+						batida <- id
+						batido = true
+						termino <- id
+						// fmt.Printf("Jogador %d bateu e saiu do jogo\n", id)
+					}
+					cartaParaSair := escolherCarta(mao)
+					out <- mao[cartaParaSair]
+					mao = append(mao[:cartaParaSair], mao[cartaParaSair+1:]...)
 			}
 		}
 	}
@@ -102,21 +100,25 @@ func main() {
 
 	embaralharBaralho(baralho[:])
 
-	batida := make(chan int)
-	acabou := make(chan int, 5)
+	batida := make(chan int, 5)
+	termino := make(chan int, 5)
 
 	for i := 0; i < NJ; i++ {
 		cartasEscolhidas := baralho[i*M : (i+1)*M]
-		go jogador(i, ch[i], ch[(i+1)%NJ], cartasEscolhidas, batida, acabou)
+		go jogador(i, ch[i], ch[(i+1)%NJ], cartasEscolhidas, batida, termino)
 	}
 
 	// Inicia o jogo enviando a primeira carta
 	ch[0] <- baralho[NJ*M]
 
-	// Continuar até restar um jogador
-	for i := 0; i < NJ-1; i++{
-		fmt.Printf("Jogador %d terminou e está liberado\n", <-acabou)
+	var ordem []int
+
+	for i := 0; i < NJ; i++ {
+		ordem = append(ordem, <-termino)
 	}
 
-	fmt.Print("Acabou")
+	for i := 0; i < len(ordem); i++ {
+		fmt.Printf("Jogador %d bateu\n", ordem[i])
+	}
+
 }
